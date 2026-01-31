@@ -325,6 +325,7 @@ SUPPORTED_NATIVE_PROVIDERS: Final[list[str]] = [
     "gemini",
     "bedrock",
     "aws",
+    "codex_cli",
 ]
 
 
@@ -384,6 +385,8 @@ class LLM(BaseLLM):
                 "gemini": "gemini",
                 "bedrock": "bedrock",
                 "aws": "bedrock",
+                "codex": "codex_cli",
+                "codex_cli": "codex_cli",
             }
 
             canonical_provider = provider_mapping.get(prefix.lower())
@@ -402,6 +405,16 @@ class LLM(BaseLLM):
             provider = cls._infer_provider_from_model(model)
             use_native = True
             model_string = model
+
+        # Codex models are only available via the Responses API.
+        # Default to Responses API unless explicitly overridden by the caller.
+        if (
+            use_native
+            and provider == "openai"
+            and "api" not in kwargs
+            and "codex" in model_string.lower()
+        ):
+            kwargs = {**kwargs, "api": "responses"}
 
         native_class = cls._get_native_provider(provider) if use_native else None
         if native_class and not is_litellm and provider in SUPPORTED_NATIVE_PROVIDERS:
@@ -469,6 +482,9 @@ class LLM(BaseLLM):
                 for prefix in ["gpt-", "gpt-35-", "o1", "o3", "o4", "azure-"]
             )
 
+        if provider == "codex_cli":
+            return True
+
         return False
 
     @classmethod
@@ -498,6 +514,9 @@ class LLM(BaseLLM):
             return True
 
         if provider == "bedrock" and model in BEDROCK_MODELS:
+            return True
+
+        if provider == "codex_cli":
             return True
 
         if provider == "azure":
@@ -567,6 +586,11 @@ class LLM(BaseLLM):
             from crewai.llms.providers.bedrock.completion import BedrockCompletion
 
             return BedrockCompletion
+
+        if provider == "codex_cli":
+            from crewai.llms.providers.codex_cli.completion import CodexCLICompletion
+
+            return CodexCLICompletion
 
         return None
 
