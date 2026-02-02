@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -5,6 +6,12 @@ import sys
 import click
 
 from crewai.cli.constants import ENV_VARS, MODELS
+from crewai.cli.local_sources import (
+    _append_uv_sources,
+    _build_uv_sources,
+    _is_truthy,
+    _resolve_local_repo_root,
+)
 from crewai.cli.provider import (
     get_provider_data,
     select_model,
@@ -155,7 +162,14 @@ def copy_template_files(folder_path, name, class_name, parent_folder):
             copy_template(src_file, dst_file, name, class_name, folder_path.name)
 
 
-def create_crew(name, provider=None, skip_provider=False, parent_folder=None):
+def create_crew(
+    name,
+    provider=None,
+    skip_provider=False,
+    parent_folder=None,
+    local: bool = False,
+    local_repo: str | None = None,
+):
     folder_path, folder_name, class_name = create_folder_structure(name, parent_folder)
     env_vars = load_env_vars(folder_path)
     if not skip_provider:
@@ -269,5 +283,34 @@ def create_crew(name, provider=None, skip_provider=False, parent_folder=None):
             src_file = templates_dir / file_name
             dst_file = src_folder / file_name
             copy_template(src_file, dst_file, name, class_name, folder_name)
+
+    if not parent_folder:
+        local_repo_env = os.getenv("CREWAI_LOCAL_REPO") or os.getenv(
+            "CREWAI_LOCAL_DEV_PATH"
+        )
+        local_toggle_env = os.getenv("CREWAI_LOCAL_DEV")
+        use_local_sources = local or _is_truthy(local_toggle_env) or bool(
+            local_repo_env or local_repo
+        )
+
+        if use_local_sources:
+            repo_root = _resolve_local_repo_root(local_repo or local_repo_env)
+            if repo_root:
+                sources = _build_uv_sources(repo_root)
+                if _append_uv_sources(folder_path / "pyproject.toml", sources):
+                    click.secho(
+                        "Added local uv sources to pyproject.toml.", fg="green"
+                    )
+                else:
+                    click.secho(
+                        "Local uv sources requested, but no changes were made.",
+                        fg="yellow",
+                    )
+            else:
+                click.secho(
+                    "Local uv sources requested, but no repo root was found. "
+                    "Falling back to PyPI.",
+                    fg="yellow",
+                )
 
     click.secho(f"Crew {name} created successfully!", fg="green", bold=True)

@@ -7,6 +7,7 @@ from unittest import mock
 import pytest
 from click.testing import CliRunner
 from crewai.cli.create_crew import create_crew, create_folder_structure
+from crewai.cli.local_sources import _append_uv_sources
 
 
 @pytest.fixture
@@ -294,6 +295,28 @@ def test_create_folder_structure_folder_name_validation():
 
             if folder_path.exists():
                 shutil.rmtree(folder_path)
+
+
+def test_append_uv_sources_appends_section(tmp_path):
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text("[project]\nname = \"demo\"\n")
+
+    sources = {"crewai": tmp_path / "lib" / "crewai"}
+    assert _append_uv_sources(pyproject, sources) is True
+
+    content = pyproject.read_text()
+    assert "[tool.uv.sources]" in content
+    assert "crewai = { path = " in content
+
+
+def test_append_uv_sources_skips_when_present(tmp_path):
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        "[project]\nname = \"demo\"\n\n[tool.uv.sources]\ncrewai = { path = \"x\" }\n"
+    )
+
+    sources = {"crewai": tmp_path / "lib" / "crewai"}
+    assert _append_uv_sources(pyproject, sources) is False
 
 
 @mock.patch("crewai.cli.create_crew.create_folder_structure")

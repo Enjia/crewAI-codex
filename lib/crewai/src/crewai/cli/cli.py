@@ -82,12 +82,28 @@ def uv(uv_args):
 @click.argument("name")
 @click.option("--provider", type=str, help="The provider to use for the crew")
 @click.option("--skip_provider", is_flag=True, help="Skip provider validation")
-def create(type, name, provider, skip_provider=False):
+@click.option(
+    "--local",
+    is_flag=True,
+    help="Use local crewAI sources if available (uv only).",
+)
+@click.option(
+    "--local-repo",
+    type=str,
+    help="Path to a local crewAI repo to use for uv sources.",
+)
+def create(type, name, provider, skip_provider=False, local=False, local_repo=None):
     """Create a new crew, or flow."""
     if type == "crew":
-        create_crew(name, provider, skip_provider)
+        create_crew(
+            name,
+            provider,
+            skip_provider,
+            local=local,
+            local_repo=local_repo,
+        )
     elif type == "flow":
-        create_flow(name)
+        create_flow(name, local=local, local_repo=local_repo)
     else:
         click.secho("Error: Invalid type. Must be 'crew' or 'flow'.", fg="red")
 

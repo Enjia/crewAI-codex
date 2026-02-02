@@ -18,6 +18,22 @@ Next, navigate to your project directory and install the dependencies:
 ```bash
 crewai install
 ```
+
+### Local development (optional)
+
+If you want to use local crewAI sources (uv only), create the project with:
+
+```bash
+crewai create crew <project_name> --local
+```
+
+Or set environment variables to point to your local repo:
+
+```bash
+CREWAI_LOCAL_DEV=1 CREWAI_LOCAL_REPO=/path/to/crewAI-codex crewai create crew <project_name>
+```
+
+This appends `[tool.uv.sources]` to `pyproject.toml`. If the section is missing, the project will use PyPI.
 ### Customizing
 
 **Add your `OPENAI_API_KEY` into the `.env` file**

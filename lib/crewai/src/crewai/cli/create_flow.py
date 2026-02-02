@@ -1,11 +1,18 @@
+import os
 from pathlib import Path
 
 import click
 
+from crewai.cli.local_sources import (
+    _append_uv_sources,
+    _build_uv_sources,
+    _is_truthy,
+    _resolve_local_repo_root,
+)
 from crewai.telemetry import Telemetry
 
 
-def create_flow(name):
+def create_flow(name, local: bool = False, local_repo: str | None = None):
     """Create a new flow."""
     folder_name = name.replace(" ", "_").replace("-", "_").lower()
     class_name = name.replace("_", " ").replace("-", " ").title().replace(" ", "")
@@ -93,6 +100,32 @@ def create_flow(name):
         else:
             click.secho(
                 f"Warning: Crew folder {crew_folder} not found in template.",
+                fg="yellow",
+            )
+
+    local_repo_env = os.getenv("CREWAI_LOCAL_REPO") or os.getenv(
+        "CREWAI_LOCAL_DEV_PATH"
+    )
+    local_toggle_env = os.getenv("CREWAI_LOCAL_DEV")
+    use_local_sources = local or _is_truthy(local_toggle_env) or bool(
+        local_repo_env or local_repo
+    )
+
+    if use_local_sources:
+        repo_root = _resolve_local_repo_root(local_repo or local_repo_env)
+        if repo_root:
+            sources = _build_uv_sources(repo_root)
+            if _append_uv_sources(project_root / "pyproject.toml", sources):
+                click.secho("Added local uv sources to pyproject.toml.", fg="green")
+            else:
+                click.secho(
+                    "Local uv sources requested, but no changes were made.",
+                    fg="yellow",
+                )
+        else:
+            click.secho(
+                "Local uv sources requested, but no repo root was found. "
+                "Falling back to PyPI.",
                 fg="yellow",
             )
 
